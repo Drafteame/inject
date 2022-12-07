@@ -44,6 +44,7 @@ jobs:
           cz bump --changelog --yes
           export REV=`cz version --project`
           echo "::set-output name=version::$REV"
+          git add . && git commit -m "ci: add version changes"
 
       - name: Push changes
         uses: Woile/github-push-action@master
@@ -69,12 +70,12 @@ jobs:
           ref: "main"
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.18.x
+          go-version: 1.19.x
 
       - name: Config private packages
-        run:  git config --global url.https://${{ secrets.ACCESS_TOKEN }}@github.com/Drafteame.insteadOf https://github.com/Drafteame
+        run: git config --global url.https://${{ secrets.ACCESS_TOKEN }}@github.com/Drafteame.insteadOf https://github.com/Drafteame
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
