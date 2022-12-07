@@ -1,4 +1,4 @@
-package inject
+package container
 
 type todo struct {
 	db database
