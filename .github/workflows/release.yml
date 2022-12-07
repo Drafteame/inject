@@ -44,7 +44,13 @@ jobs:
           cz bump --changelog --yes
           export REV=`cz version --project`
           echo "::set-output name=version::$REV"
-          git add . && git commit -m "ci: add version changes"
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          author_name: ${{ secrets.GIT_NAME }}
+          author_email: ${{ secrets.GIT_EMAIL }}
+          message: 'ci: add changelog and version'
 
       - name: Push changes
         uses: Woile/github-push-action@master
