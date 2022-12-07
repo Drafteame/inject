@@ -1,0 +1,13 @@
+## v0.1.1 (2022-12-07)
+
+
+- fix: version (#3)
+- fix: release tidy compat version (#2)
+- feat: simplify container search (#1)
+- * feat: simplify injection and container management
+
+* ci: add release pipeline
+- chore: deative release
+- chore: add main structure
+- Create README.md
+- Initial commit
