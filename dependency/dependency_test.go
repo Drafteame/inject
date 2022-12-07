@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/Drafteame/inject/dependency/mocks"
 )
 
 // nolint
@@ -68,25 +70,25 @@ func (u *user) getAge() int {
 }
 
 func TestNewShared(t *testing.T) {
-	dep := NewShared(func() {})
+	dep := NewSingleton(func() {})
 
 	assert.IsType(t, Dependency{}, dep)
-	assert.True(t, dep.shared)
+	assert.True(t, dep.singleton)
 }
 
 func TestDependency_IsShared(t *testing.T) {
 	dep := New(func() {})
-	shared := NewShared(func() {})
+	s := NewSingleton(func() {})
 
-	assert.True(t, shared.IsShared())
-	assert.False(t, dep.IsShared())
+	assert.True(t, s.IsSingleton())
+	assert.False(t, dep.IsSingleton())
 }
 
 func TestDependency_String(t *testing.T) {
 	constructor := func(string, int) {}
 	dep := New(constructor, "some", 0)
 
-	expStr := "dependency.Dependency{Constructor: func(string, int), Args: [some 0]}"
+	expStr := "dependency.Dependency{Factory: func(string, int), Args: [some 0]}"
 
 	assert.Equal(t, expStr, dep.String())
 }
@@ -421,5 +423,27 @@ func TestDependency_Build(t *testing.T) {
 
 			assert.Nil(t, obj.userService)
 		}
+	})
+
+	t.Run("with injectable dependency", func(t *testing.T) {
+		injectDepName := "inject"
+		injectDep := Inject(injectDepName)
+		injectDepValue := "some"
+
+		ic := mocks.NewContainer(t)
+		ic.On("Get", injectDepName).Return(injectDepValue, nil)
+
+		injectedValue := ""
+
+		dep := New(func(name string) int {
+			injectedValue = name
+			return 1
+		}, injectDep)
+
+		res, err := dep.SetContainer(ic).Build()
+
+		assert.NoError(t, err)
+		assert.Equal(t, (any)(1), res)
+		assert.Equal(t, injectDepValue, injectedValue)
 	})
 }

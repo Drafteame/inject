@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -15,22 +14,6 @@ func GetFirstReturnType(construct any) reflect.Type {
 	}
 
 	return ctype.Out(0)
-}
-
-// BuildAliasType takes an element and get its type to be converted into an Alias container type
-func BuildAliasType(alias any) (reflect.Type, error) {
-	atype := reflect.TypeOf(alias)
-	if atype.Kind() != reflect.Pointer {
-		return nil, fmt.Errorf("inject: alias option value should be a pointer to an interface")
-	}
-
-	atype = atype.Elem()
-	akind := atype.Kind()
-	if akind != reflect.Interface {
-		return nil, fmt.Errorf("inject: alias option value should be a pointer to an interface")
-	}
-
-	return atype, nil
 }
 
 // EmbedsType checks that the provided `elem` interface embeds the provided type `e` directly. If it does, return true,

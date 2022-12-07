@@ -1,43 +1,37 @@
-package inject
+package types
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/Drafteame/inject/dependency"
 	"github.com/Drafteame/inject/utils"
 )
 
 const (
-	tag             = "inject"
-	nameOption      = "name"
-	optionalOption  = "optional"
-	sourceDeps      = "deps"
-	sourceNamedDeps = "named-deps"
+	tag            = "inject"
+	nameOption     = "name"
+	optionalOption = "optional"
 )
+
+type Container interface {
+	Get(name string) (any, error)
+}
 
 // In is a struct that should be embedded to other struct to denote that is a valid input for an invoker function and
 // his fields should be filled from the dependency container threes.
 type In struct{}
 
-// IsIn validate if the given element embeds the struct `inject.In`.
-func IsIn(i any) bool {
-	return utils.EmbedsType(i, reflect.TypeOf(In{}))
-}
-
 // injectInField  is the configuration that each In struct fields should follow to be filled.
 type injectInField struct {
-	fieldName       string
-	source          string
-	injectName      string
-	injectType      reflect.Type
-	optional        bool
-	sharedContainer *shared
+	fieldName  string
+	injectName string
+	optional   bool
+	container  Container
 }
 
-func buildInStruct(cont *container, in reflect.Value) error {
-	if !IsIn(in.Type()) {
+func BuildIn(cont Container, in reflect.Value) error {
+	if !utils.EmbedsType(in.Type(), reflect.TypeOf(In{})) {
 		return fmt.Errorf("inject: struct doesn't embed `inject.In` struct")
 	}
 
@@ -54,8 +48,12 @@ func buildInStruct(cont *container, in reflect.Value) error {
 			continue
 		}
 
-		injectField := buildInjectInField(itype.Field(i))
-		injectField.sharedContainer = cont.shared
+		injectField, err := buildInjectInField(itype.Field(i))
+		if err != nil {
+			return err
+		}
+
+		injectField.container = cont
 
 		injectFields = append(injectFields, injectField)
 	}
@@ -67,60 +65,26 @@ func buildInStruct(cont *container, in reflect.Value) error {
 // of `inject.source`. The functions called are either `fillInStructFromDeps` or `fillInStructFromNamedDeps`. Both
 // functions return an error if something goes wrong, and this error is returned by the caller (`fillInStruct`). If no
 // errors occur, then nil is returned.
-func fillInStruct(cont *container, in reflect.Value, conf []injectInField) error {
+func fillInStruct(cont Container, in reflect.Value, conf []injectInField) error {
 	for _, inject := range conf {
-		switch inject.source {
-		default:
-			if err := fillInStructFromDeps(cont, in, inject); err != nil {
-				return err
-			}
-		case sourceNamedDeps:
-			if err := fillInStructFromNamedDeps(cont, in, inject); err != nil {
-				return err
-			}
+		if err := fillStructFieldFromBuilder(cont, in, inject); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-// fillInStructFromDeps It gets the builder from the container by type. It calls `fillStructFromBuilder` with that
-// builder and a boolean indicating whether it was found or not. `fillStructFromBuilder` will call `builder()` to get an
-// instance of the dependency, and then set that value in the struct field using reflection. If there is no builder for
-// that dependency, it will return an error.
-func fillInStructFromDeps(cont *container, in reflect.Value, conf injectInField) error {
-	builder, ok := cont.deps[conf.injectType]
-	return fillStructFromBuilder(builder, ok, in, conf)
-}
-
-// fillInStructFromNamedDeps It gets the builder from the container by name. It calls `fillStructFromBuilder` with that
-// builder and a boolean indicating whether it was found or not. `fillStructFromBuilder` will call `builder()` to get an
-// instance of the dependency, and then set that value in the struct field using reflection. If there is no builder for
-// that dependency, it will return an error.
-func fillInStructFromNamedDeps(cont *container, in reflect.Value, conf injectInField) error {
-	builder, ok := cont.depsByName[conf.injectName]
-	return fillStructFromBuilder(builder, ok, in, conf)
-}
-
-// fillStructFromBuilder It checks if the dependency exists. If it doesn't exist, it returns an error. It builds the
+// fillStructFieldFromBuilder It checks if the dependency exists. If it doesn't exist, it returns an error. It builds the
 // dependency using `builder`. It sets the field of the struct with name `conf.fieldName` to be equal to `out`. Returns
 // nil (no error).
-func fillStructFromBuilder(builder dependency.Builder, exist bool, in reflect.Value, conf injectInField) error {
-	if !exist {
+func fillStructFieldFromBuilder(cont Container, in reflect.Value, conf injectInField) error {
+	val, err := cont.Get(conf.injectName)
+	if err != nil {
 		if conf.optional {
 			return nil
 		}
 
-		nameErrMsg := ""
-		if conf.injectName != "" {
-			nameErrMsg = fmt.Sprintf(" and name %s", conf.injectName)
-		}
-
-		return fmt.Errorf("inject: can't provide dependency of type `%v`%s to In receiver", conf.injectType, nameErrMsg)
-	}
-
-	out, err := builder.WithSharedContainer(conf.sharedContainer).Build()
-	if err != nil {
 		return err
 	}
 
@@ -132,23 +96,24 @@ func fillStructFromBuilder(builder dependency.Builder, exist bool, in reflect.Va
 
 	field := invalue.FieldByName(conf.fieldName)
 
-	field.Set(reflect.ValueOf(out))
+	field.Set(reflect.ValueOf(val))
 	return nil
 }
 
 // buildInjectInField We get the tags of the field. If there is a `name` tag, we set the source to `sourceNamedDeps`. If
 // there is an `optional` tag, we set it to true. We create a new injectInField struct and return it.
-func buildInjectInField(field reflect.StructField) injectInField {
+func buildInjectInField(field reflect.StructField) (injectInField, error) {
 	ftags := getFieldTags(field)
-	injectType := field.Type
 	injectName := ""
-	source := sourceDeps
 	optional := false
 
-	if val, ok := ftags[nameOption]; ok {
-		source = sourceNamedDeps
-		injectName = val
+	val, ok := ftags[nameOption]
+
+	if !ok {
+		return injectInField{}, fmt.Errorf("inject: missing name tag of inject dependency on field `%s`", field.Name)
 	}
+
+	injectName = val
 
 	if _, ok := ftags[optionalOption]; ok {
 		optional = true
@@ -156,13 +121,11 @@ func buildInjectInField(field reflect.StructField) injectInField {
 
 	inject := injectInField{
 		fieldName:  field.Name,
-		source:     source,
 		injectName: injectName,
-		injectType: injectType,
 		optional:   optional,
 	}
 
-	return inject
+	return inject, nil
 }
 
 // getFieldTags It gets the tag value from the field. If there is no tag, it returns an empty map. It splits the tag by

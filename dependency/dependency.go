@@ -6,28 +6,28 @@ import (
 	"reflect"
 )
 
+//go:generate mockery --name=Builder --filename=builder.go --structname=Builder --output=mocks --outpkg=mocks
+//go:generate mockery --name=Container --filename=container.go --structname=Container --output=mocks --outpkg=mocks
+
 // Builder definition for a dependency that should be build on injection time.
 type Builder interface {
 	Build() (any, error)
-	IsShared() bool
-	WithSharedContainer(c SharedContainer) Builder
 }
 
-// SharedContainer is a container that holds global dependencies.
-type SharedContainer interface {
-	GetByName(name string) (any, error)
-	GetByType(t reflect.Type) (any, error)
+// Container is a container that holds global dependencies.
+type Container interface {
+	Get(name string) (any, error)
 }
 
 // Dependency implementation of dependency.
 type Dependency struct {
-	Constructor     any
-	Args            []any
-	shared          bool
-	sharedContainer SharedContainer
+	Factory   any
+	Args      []any
+	singleton bool
+	container Container
 }
 
-// New Create a new Dependency struct to build injection. Constructor is a function with one of the next
+// New Create a new Dependency struct to build injection. Factory is a function with one of the next
 // supported signs:
 //   - func()
 //   - func() any
@@ -37,27 +37,27 @@ type Dependency struct {
 //   - func(any-arguments) (any, error)
 func New(constructor any, args ...any) Dependency {
 	return Dependency{
-		Constructor: constructor,
-		Args:        args,
+		Factory: constructor,
+		Args:    args,
 	}
 }
 
-// NewShared Create a new Dependency struct to build injection but marking that will be a shared dependency to provide.
-func NewShared(constructor any, args ...any) Dependency {
+// NewSingleton Create a new Dependency struct to build injection but marking that will be a shared dependency to provide.
+func NewSingleton(constructor any, args ...any) Dependency {
 	return Dependency{
-		Constructor: constructor,
-		Args:        args,
-		shared:      true,
+		Factory:   constructor,
+		Args:      args,
+		singleton: true,
 	}
 }
 
-// IsShared returns true if the current dependency will be treated as a shared dependency.
-func (d Dependency) IsShared() bool { return d.shared }
+// IsSingleton returns true if the current dependency will be treated as a shared dependency.
+func (d Dependency) IsSingleton() bool { return d.singleton }
 
-// WithSharedContainer add shared container to the dependency object in order to resolve shared arguments in the
+// SetContainer add shared container to the dependency object in order to resolve shared arguments in the
 // dependency three.
-func (d Dependency) WithSharedContainer(sc SharedContainer) Builder {
-	d.sharedContainer = sc
+func (d Dependency) SetContainer(sc Container) Dependency {
+	d.container = sc
 	return d
 }
 
@@ -75,7 +75,7 @@ func (d Dependency) Build() (any, error) {
 		return nil, err
 	}
 
-	res := reflect.ValueOf(d.Constructor).Call(args)
+	res := reflect.ValueOf(d.Factory).Call(args)
 
 	arg, err := d.getValueAndError(res)
 	if err != nil {
@@ -86,15 +86,15 @@ func (d Dependency) Build() (any, error) {
 }
 
 func (d Dependency) String() string {
-	ctype := reflect.TypeOf(d.Constructor)
-	return fmt.Sprintf("dependency.Dependency{Constructor: %v, Args: %v}", ctype, d.Args)
+	ctype := reflect.TypeOf(d.Factory)
+	return fmt.Sprintf("dependency.Dependency{Factory: %v, Args: %v}", ctype, d.Args)
 }
 
 // validateAndGetReflectType It checks if the constructor is a function. It checks if the number of arguments provided
 // to the constructor matches the number of arguments expected by it. If everything is ok, it returns a `reflect.Type`
 // object that represents the type of our constructor function.
 func (d Dependency) validateAndGetReflectType() (reflect.Type, error) {
-	ctype := reflect.TypeOf(d.Constructor)
+	ctype := reflect.TypeOf(d.Factory)
 	if ctype == nil {
 		return nil, errors.New("inject: can't build an untyped nil")
 	}
@@ -152,18 +152,40 @@ func (d Dependency) getArgsValues(ctype reflect.Type) ([]reflect.Value, error) {
 func (d Dependency) resolveArguments(ctype reflect.Type) ([]any, error) {
 	args := make([]any, len(d.Args))
 
-	for i := 0; i < len(d.Args); i++ {
-		builder := d.normalizeArgument(d.Args[i])
+	var res any
+	var err error
 
-		res, err := builder.WithSharedContainer(d.sharedContainer).Build()
+	for i := 0; i < len(d.Args); i++ {
+		switch d.Args[i].(type) {
+		case Injectable:
+			arg := d.Args[i].(Injectable).SetContainer(d.container)
+			res, err = d.resolveArgument(i, arg, ctype)
+		case Dependency:
+			arg := d.Args[i].(Dependency).SetContainer(d.container)
+			res, err = d.resolveArgument(i, arg, ctype)
+		default:
+			arg := d.normalizeArgument(d.Args[i]).SetContainer(d.container)
+			res, err = d.resolveArgument(i, arg, ctype)
+		}
+
 		if err != nil {
-			return nil, fmt.Errorf("inject: error resolving argument %d for constructor %v: %v", i, ctype, err)
+			return nil, err
 		}
 
 		args[i] = res
 	}
 
 	return args, nil
+}
+
+func (d Dependency) resolveArgument(index int, builder Builder, ctype reflect.Type) (any, error) {
+	errMsg := "inject: error resolving argument %d for constructor %v: %v"
+	res, err := builder.Build()
+	if err != nil {
+		return nil, fmt.Errorf(errMsg, index, ctype, err)
+	}
+
+	return res, nil
 }
 
 // getValueAndError If the constructor returns no values, we return `nil` and `nil`. If the constructor returns one
@@ -199,13 +221,9 @@ func (d Dependency) getValueAndError(res []reflect.Value) (any, error) {
 // normalizeArgument If the argument is nil, we return a new dependency that returns nil. If the argument is already a
 // builder, we return it as-is. If the argument is a function, we wrap it in a new dependency and return that instead.
 // Otherwise, we wrap the value in a new dependency and return that instead (this will be used for constants).
-func (d Dependency) normalizeArgument(arg any) Builder {
+func (d Dependency) normalizeArgument(arg any) Dependency {
 	if arg == nil {
 		return New(func() any { return arg })
-	}
-
-	if argBuilder, ok := arg.(Builder); ok {
-		return argBuilder
 	}
 
 	if atype := reflect.TypeOf(arg); atype.Kind() == reflect.Func {

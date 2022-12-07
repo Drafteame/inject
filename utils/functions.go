@@ -2,6 +2,9 @@ package utils
 
 import "reflect"
 
+// WhereErrorOut it tries to find from the reflected type of function callback, if this call back has any return error
+// value and if it does, what's the index of the return value where the error comes from. If the function has more than
+// one error value as return types, it will return the index of the first error founded.
 func WhereErrorOut(ctype reflect.Type) (int, bool) {
 	errInt := reflect.TypeOf((*error)(nil)).Elem()
 
