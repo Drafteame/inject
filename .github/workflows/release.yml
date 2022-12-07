@@ -44,6 +44,7 @@ jobs:
           cz bump --changelog --yes
           export REV=`cz version --project`
           echo "::set-output name=version::$REV"
+          git add . && git commit -m "ci: add version changes"
 
       - name: Push changes
         uses: Woile/github-push-action@master
