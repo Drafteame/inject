@@ -84,7 +84,7 @@ jobs:
         run: git config --global url.https://${{ secrets.ACCESS_TOKEN }}@github.com/Drafteame.insteadOf https://github.com/Drafteame
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v4
         with:
           distribution: goreleaser
           version: latest

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Drafteame/inject/dependency"
+	"github.com/Drafteame/inject/types"
 )
 
 func TestContainer_Provide(t *testing.T) {
@@ -17,7 +18,7 @@ func TestContainer_Provide(t *testing.T) {
 
 		ic := New()
 
-		userDepName := "userDep"
+		userDepName := types.Symbol("userDep")
 		userDep := dependency.New(newUser, name, age)
 
 		err := ic.Provide(userDepName, userDep)
@@ -37,7 +38,7 @@ func TestContainer_Provide(t *testing.T) {
 
 		ic := New()
 
-		userDepName := "usersService"
+		userDepName := types.Symbol("usersService")
 		userDep := dependency.New(newUser, name, age)
 
 		if err := ic.Provide(userDepName, userDep); err != nil {
@@ -56,7 +57,7 @@ func TestContainer_Provide(t *testing.T) {
 	t.Run("provide dependency with no return value constructor", func(t *testing.T) {
 		ic := New()
 
-		depName := "test"
+		depName := types.Symbol("test")
 		dep := dependency.New(func() {})
 
 		err := ic.Provide(depName, dep)
@@ -69,7 +70,7 @@ func TestContainer_Provide(t *testing.T) {
 	t.Run("provide singleton dependency", func(t *testing.T) {
 		ic := New()
 
-		depName := "test"
+		depName := types.Symbol("test")
 		dep := dependency.NewSingleton(newDriver, "test")
 
 		err := ic.Provide(depName, dep)
@@ -85,7 +86,7 @@ func TestContainer_Provide(t *testing.T) {
 
 		ic := New()
 
-		userDepName := "usersService"
+		userDepName := types.Symbol("usersService")
 		userDep := dependency.NewSingleton(newUser, name, age)
 		if err := ic.Provide(userDepName, userDep); err != nil {
 			t.Error(err)
@@ -103,7 +104,7 @@ func TestContainer_Provide(t *testing.T) {
 	t.Run("provide singleton dependency with no return value constructor", func(t *testing.T) {
 		ic := New()
 
-		depName := "test"
+		depName := types.Symbol("test")
 		dep := dependency.NewSingleton(func() {})
 
 		err := ic.Provide(depName, dep)
@@ -119,7 +120,7 @@ func TestContainer_Provide(t *testing.T) {
 
 		ic := New()
 
-		userDepName := ""
+		userDepName := types.Symbol("")
 		userDep := dependency.New(newUser, name, age)
 
 		err := ic.Provide(userDepName, userDep)
@@ -136,7 +137,7 @@ func TestContainer_Provide(t *testing.T) {
 
 		ic := &Container{}
 
-		userDepName := "some"
+		userDepName := types.Symbol("some")
 		userDep := dependency.New(newUser, name, age)
 
 		err := ic.Provide(userDepName, userDep)

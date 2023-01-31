@@ -15,7 +15,7 @@ const (
 )
 
 type Container interface {
-	Get(name string) (any, error)
+	Get(name Symbol) (any, error)
 }
 
 // In is a struct that should be embedded to other struct to denote that is a valid input for an invoker function and
@@ -25,7 +25,7 @@ type In struct{}
 // injectInField  is the configuration that each In struct fields should follow to be filled.
 type injectInField struct {
 	fieldName  string
-	injectName string
+	injectName Symbol
 	optional   bool
 	container  Container
 }
@@ -121,7 +121,7 @@ func buildInjectInField(field reflect.StructField) (injectInField, error) {
 
 	inject := injectInField{
 		fieldName:  field.Name,
-		injectName: injectName,
+		injectName: Symbol(injectName),
 		optional:   optional,
 	}
 

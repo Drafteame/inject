@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Drafteame/inject/dependency/mocks"
+	"github.com/Drafteame/inject/types"
 )
 
 func TestInject(t *testing.T) {
-	name := "test"
+	name := types.Symbol("test")
 	i := Inject(name)
 
 	assert.IsType(t, Injectable{}, i)
@@ -18,7 +19,7 @@ func TestInject(t *testing.T) {
 }
 
 func TestInjectable_IsSingleton(t *testing.T) {
-	name := "test"
+	name := types.Symbol("test")
 	i := Inject(name)
 
 	assert.False(t, i.IsSingleton())
@@ -27,7 +28,7 @@ func TestInjectable_IsSingleton(t *testing.T) {
 func TestInjectable_SetContainer(t *testing.T) {
 	ic := mocks.NewContainer(t)
 
-	name := "test"
+	name := types.Symbol("test")
 	i := Inject(name).SetContainer(ic).(Injectable)
 
 	assert.NotNil(t, i.container)
@@ -36,7 +37,7 @@ func TestInjectable_SetContainer(t *testing.T) {
 
 func TestInjectable_Build(t *testing.T) {
 	t.Run("resolve build from container", func(t *testing.T) {
-		depName := "test"
+		depName := types.Symbol("test")
 		dep := Inject(depName)
 
 		ic := mocks.NewContainer(t)
@@ -49,7 +50,7 @@ func TestInjectable_Build(t *testing.T) {
 	})
 
 	t.Run("error by empty container", func(t *testing.T) {
-		depName := "test"
+		depName := types.Symbol("test")
 		dep := Inject(depName)
 
 		_, err := dep.Build()
