@@ -32,7 +32,7 @@ func TestContainer_Invoke(t *testing.T) {
 
 		inject := New()
 		called := false
-		depName := "test"
+		depName := types.Symbol("test")
 
 		type args struct {
 			types.In
@@ -103,7 +103,7 @@ func TestContainer_Invoke(t *testing.T) {
 		inject := New()
 		called := false
 
-		userDepName := "usersService"
+		userDepName := types.Symbol("usersService")
 		userDep := dependency.New(newUser, name, age)
 		if err := inject.Provide(userDepName, userDep); err != nil {
 			t.Error(err)
@@ -133,7 +133,7 @@ func TestContainer_Invoke(t *testing.T) {
 
 		inject := New()
 
-		depName := "test"
+		depName := types.Symbol("test")
 		userDep := dependency.New(newUser, name, age)
 		if err := inject.Provide(depName, userDep); err != nil {
 			t.Error(err)
@@ -296,7 +296,7 @@ func TestContainer_Invoke(t *testing.T) {
 	t.Run("invoke error resolving dependency three", func(t *testing.T) {
 		inject := New()
 
-		depName := "depName"
+		depName := types.Symbol("depName")
 		dep := dependency.New(func() (*user, error) { return nil, errors.New("some") })
 		if err := inject.Provide(depName, dep); err != nil {
 			t.Error(err)
@@ -323,21 +323,21 @@ func TestContainer_Invoke(t *testing.T) {
 
 		const driverName = "some"
 
-		sharedDepName := "driver"
+		sharedDepName := types.Symbol("driver")
 		sharedDep := dependency.NewSingleton(newDriver, driverName)
 		if err := inject.Provide(sharedDepName, sharedDep); err != nil {
 			t.Error(err)
 			return
 		}
 
-		userRepoName := "userRepo"
+		userRepoName := types.Symbol("userRepo")
 		usersRepo := dependency.New(newUserWithDriver, dependency.Inject(sharedDepName))
 		if err := inject.Provide(userRepoName, usersRepo); err != nil {
 			t.Error(err)
 			return
 		}
 
-		todoRepoName := "todoRepo"
+		todoRepoName := types.Symbol("todoRepo")
 		todoRepo := dependency.New(newTodo, dependency.Inject(sharedDepName))
 		if err := inject.Provide(todoRepoName, todoRepo); err != nil {
 			t.Error(err)
@@ -372,14 +372,14 @@ func TestContainer_Invoke(t *testing.T) {
 
 		errBuild := errors.New("some")
 
-		sharedDepName := "driver"
+		sharedDepName := types.Symbol("driver")
 		sharedDep := dependency.NewSingleton(func(dbname string) (*driver, error) { return nil, errBuild }, dbName)
 		if err := inject.Provide(sharedDepName, sharedDep); err != nil {
 			t.Error(err)
 			return
 		}
 
-		usersRepoName := "usersRepo"
+		usersRepoName := types.Symbol("usersRepo")
 		usersRepo := dependency.New(newUserWithDriver, dependency.Inject(sharedDepName))
 		if err := inject.Provide(usersRepoName, usersRepo); err != nil {
 			t.Error(err)
@@ -405,14 +405,14 @@ func TestContainer_Invoke(t *testing.T) {
 
 		const dbName = "main"
 
-		sharedDepName := "driver"
+		sharedDepName := types.Symbol("driver")
 		sharedDep := dependency.NewSingleton(newDriver, dbName)
 		if err := inject.Provide(sharedDepName, sharedDep); err != nil {
 			t.Error(err)
 			return
 		}
 
-		usersRepoName := "usersRepo"
+		usersRepoName := types.Symbol("usersRepo")
 		usersRepo := dependency.New(newUserWithDriver, dependency.Inject("algo"))
 		if err := inject.Provide(usersRepoName, usersRepo); err != nil {
 			t.Error(err)

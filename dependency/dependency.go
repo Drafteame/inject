@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+
+	"github.com/Drafteame/inject/types"
 )
 
 //go:generate mockery --name=Builder --filename=builder.go --structname=Builder --output=mocks --outpkg=mocks
@@ -16,14 +18,14 @@ type Builder interface {
 
 // Container is a container that holds global dependencies.
 type Container interface {
-	Get(name string) (any, error)
+	Get(name types.Symbol) (any, error)
 }
 
 // Dependency implementation of dependency.
 type Dependency struct {
 	Factory   any
 	Args      []any
-	singleton bool
+	Singleton bool
 	container Container
 }
 
@@ -47,12 +49,12 @@ func NewSingleton(constructor any, args ...any) Dependency {
 	return Dependency{
 		Factory:   constructor,
 		Args:      args,
-		singleton: true,
+		Singleton: true,
 	}
 }
 
 // IsSingleton returns true if the current dependency will be treated as a shared dependency.
-func (d Dependency) IsSingleton() bool { return d.singleton }
+func (d Dependency) IsSingleton() bool { return d.Singleton }
 
 // SetContainer add shared container to the dependency object in order to resolve shared arguments in the
 // dependency three.

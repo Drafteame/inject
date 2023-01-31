@@ -8,6 +8,11 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
+// Generate Execute automatic generation of code.
+func Generate() error {
+	return sh.Run("go", "generate", "./...")
+}
+
 // Test Execute unit testing.
 func Test() error {
 	out, err := sh.Output("go", "test", "-v", "-race", "./...", "-cover", "-coverprofile=coverage.out")

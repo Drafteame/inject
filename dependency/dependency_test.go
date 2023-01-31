@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Drafteame/inject/dependency/mocks"
+	"github.com/Drafteame/inject/types"
 )
 
 // nolint
@@ -73,7 +74,7 @@ func TestNewShared(t *testing.T) {
 	dep := NewSingleton(func() {})
 
 	assert.IsType(t, Dependency{}, dep)
-	assert.True(t, dep.singleton)
+	assert.True(t, dep.Singleton)
 }
 
 func TestDependency_IsShared(t *testing.T) {
@@ -426,7 +427,7 @@ func TestDependency_Build(t *testing.T) {
 	})
 
 	t.Run("with injectable dependency", func(t *testing.T) {
-		injectDepName := "inject"
+		injectDepName := types.Symbol("inject")
 		injectDep := Inject(injectDepName)
 		injectDepValue := "some"
 
