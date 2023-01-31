@@ -2,18 +2,21 @@ package dependency
 
 import (
 	"fmt"
+
+	"github.com/Drafteame/inject/types"
 )
 
 // Injectable is a type of dependency that is not a dependency three itself, but also is a reference to other dependency
-// three, stored on the container. This Dependency will be accessed by its associated name on the container.
+// three, stored on the container. This Dependency will be accessed by his associated name on the container.
 type Injectable struct {
-	name      string
+	name      types.Symbol
 	container Container
 }
 
 var _ Builder = &Injectable{}
 
-func Inject(name string) Injectable {
+// Inject return an instance of Injectable dependency.
+func Inject(name types.Symbol) Injectable {
 	return Injectable{
 		name: name,
 	}
