@@ -23,7 +23,6 @@ List any dependencies that are required for this change.
 
 - [ ] unit
 - [ ] dev
-- [ ] integration
 - [ ] other (specify)
 
 ### Updated services
