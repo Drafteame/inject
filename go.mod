@@ -3,7 +3,7 @@ module github.com/Drafteame/inject
 go 1.18
 
 require (
-	github.com/magefile/mage v1.14.0
+	github.com/magefile/mage v1.15.0
 	github.com/stretchr/testify v1.8.2
 )
 
